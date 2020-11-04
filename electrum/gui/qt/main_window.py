@@ -44,7 +44,7 @@ from PyQt5.QtWidgets import (QMessageBox, QComboBox, QSystemTrayIcon, QTabWidget
                              QMenuBar, QFileDialog, QCheckBox, QLabel,
                              QVBoxLayout, QGridLayout, QLineEdit, QHBoxLayout, QPushButton, QScrollArea, QTextEdit,
                              QShortcut, QMainWindow, QCompleter, QInputDialog,
-                             QWidget, QSizePolicy, QStatusBar)
+                             QWidget, QSizePolicy, QStatusBar, QStyle)
 
 import electrum
 from electrum import (keystore, ecc, constants, util, bitcoin, commands,
@@ -52,7 +52,7 @@ from electrum import (keystore, ecc, constants, util, bitcoin, commands,
 from electrum.address_synchronizer import AddTransactionException
 from electrum.bitcoin import COIN, is_address
 from electrum.exchange_rate import FxThread
-from electrum.i18n import _
+from electrum.i18n import _, languages
 from electrum.lnutil import ln_dummy_address
 from electrum.logging import Logger
 from electrum.network import Network, TxBroadcastError, BestEffortRequestFailed
@@ -642,6 +642,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         paytomany_menu = tools_menu.addAction(_("&Pay to many"), self.paytomany)
 
         raw_transaction_menu = tools_menu.addMenu(_("&Load transaction"))
+        tools_menu.addAction(_("&Change language"), self.change_language)
         raw_transaction_menu.addAction(_("&From file"), self.do_process_from_file)
         raw_transaction_menu.addAction(_("&From text"), self.do_process_from_text)
         raw_transaction_menu.addAction(_("&From the blockchain"), self.do_process_from_txid)
@@ -1812,6 +1813,52 @@ verified (after approximately 24 hrs) or canceled (within 24 hrs).'))
             _('You may load a CSV file using the file icon.')
         ])
         self.show_message(msg, title=_('Pay to many'))
+
+    def change_language(self):
+        filtered_languages = dict(filter(lambda item: item[1] != 'Default', languages.items()))
+        language_abbreviations = list(filtered_languages.keys())
+        default_language = self.config.get('language', 'en_UK')
+
+        dialog = WindowModalDialog(self, _('Change language'))
+        dialog.resize(300, 310)
+        vbox = QVBoxLayout(dialog)
+
+        label = QLabel(_('Select language'))
+        vbox.addWidget(label)
+        cb = QComboBox()
+        cb.addItems(filtered_languages.values())
+        cb.setCurrentIndex(language_abbreviations.index(default_language))
+        vbox.addWidget(cb)
+        warning_box = QHBoxLayout()
+
+        warning_label = QLabel(_('When you press Ok button application will be restarted'))
+        warning_label.setMinimumWidth(260)
+        warning_label.setWordWrap(True)
+        icon_label = QLabel()
+        icon = icon_label.style().standardIcon(QStyle.SP_MessageBoxWarning)
+        icon_label.setPixmap(icon.pixmap(32, 32))
+        warning_box.addWidget(icon_label)
+        warning_box.addWidget(warning_label)
+        warning_box.addStretch(1)
+        vbox.addLayout(warning_box)
+
+        def restart():
+            self.gui_object.restart_triggered = True
+            self.config.set_key('language', language_abbreviations[cb.currentIndex()])
+            self.gui_object.close()
+
+        hbox = QHBoxLayout()
+        cancel_button = QPushButton(_('Cancel'))
+        cancel_button.clicked.connect(lambda : dialog.close())
+        restart_button = QPushButton(_('Ok'))
+        restart_button.clicked.connect(restart)
+        restart_button.setDefault(True)
+        hbox.addStretch(1)
+        hbox.addWidget(cancel_button)
+        hbox.addWidget(restart_button)
+        vbox.addStretch(1)
+        vbox.addLayout(hbox)
+        dialog.exec_()
 
     def payto_contacts(self, labels):
         paytos = [self.get_contact_payto(label) for label in labels]

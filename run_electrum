@@ -28,6 +28,8 @@ import sys
 import warnings
 import asyncio
 
+import psutil
+
 MIN_PYTHON_VERSION = "3.6.1"  # FIXME duplicated from setup.py
 _min_python_version_tuple = tuple(map(int, (MIN_PYTHON_VERSION.split("."))))
 
@@ -381,6 +383,11 @@ if __name__ == '__main__':
             plugins = init_plugins(config, config.get('gui', 'qt'))
             d = daemon.Daemon(config, fd)
             d.run_gui(config, plugins)
+            if d.gui_object.restart_triggered:
+                pid = os.getpid()
+                process = psutil.Process(pid)
+                psutil.Popen(process.cmdline())
+                _logger.info('application restart')
             sys_exit(0)
         else:
             result = daemon.request(config, 'gui', (config_options,))

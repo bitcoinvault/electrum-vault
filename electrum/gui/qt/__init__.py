@@ -126,6 +126,7 @@ class ElectrumGui(Logger):
         self.app.new_window_signal.connect(self.start_new_window)
         self.set_dark_theme_if_needed()
         self._select_language_dialog_toggle = True
+        self.restart_triggered = False
         run_hook('init_qt', self)
 
     def set_dark_theme_if_needed(self):
